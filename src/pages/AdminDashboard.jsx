@@ -24,16 +24,7 @@ export default function AdminDashboard() {
     description: "",
     task_type: "file",
     options: "",
-    allowed_file_types: [
-      "pdf",
-      "doc",
-      "docx",
-      "xls",
-      "xlsx",
-      "jpg",
-      "jpeg",
-      "png",
-    ],
+    allowed_file_types: ["pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png"],
     multiple_files: true,
   });
 
@@ -198,16 +189,7 @@ export default function AdminDashboard() {
       description: "",
       task_type: "file",
       options: "",
-      allowed_file_types: [
-        "pdf",
-        "doc",
-        "docx",
-        "xls",
-        "xlsx",
-        "jpg",
-        "jpeg",
-        "png",
-      ],
+      allowed_file_types: ["pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png"],
       multiple_files: true,
     });
 
@@ -216,24 +198,25 @@ export default function AdminDashboard() {
 
   const toggleClientSelection = (clientId) => {
     if (selectedClients.includes(clientId)) {
-      setSelectedClients(
-        selectedClients.filter((id) => id !== clientId)
-      );
+      setSelectedClients(selectedClients.filter((id) => id !== clientId));
     } else {
       setSelectedClients([...selectedClients, clientId]);
     }
   };
 
   const assignTask = async () => {
+    if (!selectedTask || selectedClients.length === 0) {
+      alert("Lütfen görev ve müşteri seçin.");
+      return;
+    }
+
     const inserts = selectedClients.map((clientId) => ({
       user_id: clientId,
       task_id: selectedTask,
       status: "Bekliyor",
     }));
 
-    const { error } = await supabase
-      .from("user_tasks")
-      .insert(inserts);
+    const { error } = await supabase.from("user_tasks").insert(inserts);
 
     if (error) {
       alert(error.message);
@@ -241,6 +224,40 @@ export default function AdminDashboard() {
     }
 
     alert("Görev atandı.");
+    setSelectedTask("");
+    setSelectedClients([]);
+    fetchAssignedTasks();
+  };
+
+  const removeAssignedTask = async (assignedTaskId) => {
+    if (!confirm("Bu görevi müşteriden geri çekmek istiyor musunuz?")) return;
+
+    const { error } = await supabase
+      .from("user_tasks")
+      .delete()
+      .eq("id", assignedTaskId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    fetchAssignedTasks();
+    fetchAnswers();
+    fetchUploads();
+  };
+
+  const reopenAssignedTask = async (assignedTaskId) => {
+    const { error } = await supabase
+      .from("user_tasks")
+      .update({ status: "Bekliyor" })
+      .eq("id", assignedTaskId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     fetchAssignedTasks();
   };
 
@@ -260,6 +277,25 @@ export default function AdminDashboard() {
     fetchUploads();
   };
 
+  const deleteTask = async (taskId) => {
+    if (!confirm("Bu görev/soru tamamen silinsin mi? Atamalar da kaldırılır.")) return;
+
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("id", taskId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    fetchTasks();
+    fetchAssignedTasks();
+    fetchAnswers();
+    fetchUploads();
+  };
+
   const logout = () => {
     localStorage.removeItem("forwo_user");
     window.location.href = "/";
@@ -275,69 +311,29 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex">
       <aside className="w-72 bg-white border-r min-h-screen p-6">
-        <h1 className="text-2xl font-bold text-[#003527]">
-          Forwo Enerji
-        </h1>
-
+        <h1 className="text-2xl font-bold text-[#003527]">Forwo Enerji</h1>
         <p className="text-xs text-gray-500 uppercase tracking-widest mb-8">
           Admin Panel
         </p>
 
         <nav className="space-y-2">
-          <button
-            onClick={() => setActiveTab("clients")}
-            className={`w-full text-left px-4 py-3 rounded-lg font-semibold ${
-              activeTab === "clients"
-                ? "bg-[#6cf8bb] text-[#003527]"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            Müşteriler
-          </button>
-
-          <button
-            onClick={() => setActiveTab("tasks")}
-            className={`w-full text-left px-4 py-3 rounded-lg font-semibold ${
-              activeTab === "tasks"
-                ? "bg-[#6cf8bb] text-[#003527]"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            Görevler ve Sorular
-          </button>
-
-          <button
-            onClick={() => setActiveTab("assigned")}
-            className={`w-full text-left px-4 py-3 rounded-lg font-semibold ${
-              activeTab === "assigned"
-                ? "bg-[#6cf8bb] text-[#003527]"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            Atananlar
-          </button>
-
-          <button
-            onClick={() => setActiveTab("answers")}
-            className={`w-full text-left px-4 py-3 rounded-lg font-semibold ${
-              activeTab === "answers"
-                ? "bg-[#6cf8bb] text-[#003527]"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            Cevaplar
-          </button>
-
-          <button
-            onClick={() => setActiveTab("uploads")}
-            className={`w-full text-left px-4 py-3 rounded-lg font-semibold ${
-              activeTab === "uploads"
-                ? "bg-[#6cf8bb] text-[#003527]"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            Yüklenen Dosyalar
-          </button>
+          {[
+            ["clients", "Müşteriler"],
+            ["tasks", "Görevler ve Sorular"],
+            ["assigned", "Atananlar"],
+            ["answers", "Cevaplar"],
+            ["uploads", "Yüklenen Dosyalar"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`w-full text-left px-4 py-3 rounded-lg font-semibold ${
+                activeTab === key ? "bg-[#6cf8bb] text-[#003527]" : "hover:bg-gray-100"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
 
           <button
             onClick={logout}
@@ -351,62 +347,16 @@ export default function AdminDashboard() {
       <main className="flex-1 p-8">
         {activeTab === "clients" && (
           <div>
-            <h2 className="text-3xl font-bold text-[#003527] mb-6">
-              Müşteri Yönetimi
-            </h2>
+            <h2 className="text-3xl font-bold text-[#003527] mb-6">Müşteri Yönetimi</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <form
-                onSubmit={createClient}
-                className="bg-white border rounded-2xl p-6 space-y-4"
-              >
-                <input
-                  className="w-full border rounded-lg p-3"
-                  placeholder="Firma Adı"
-                  value={clientForm.company_name}
-                  onChange={(e) =>
-                    setClientForm({
-                      ...clientForm,
-                      company_name: e.target.value,
-                    })
-                  }
-                />
-
-                <input
-                  className="w-full border rounded-lg p-3"
-                  placeholder="Yetkili"
-                  value={clientForm.authorized_person}
-                  onChange={(e) =>
-                    setClientForm({
-                      ...clientForm,
-                      authorized_person: e.target.value,
-                    })
-                  }
-                />
-
-                <input
-                  className="w-full border rounded-lg p-3"
-                  placeholder="Kullanıcı Adı"
-                  value={clientForm.username}
-                  onChange={(e) =>
-                    setClientForm({
-                      ...clientForm,
-                      username: e.target.value,
-                    })
-                  }
-                />
-
-                <input
-                  className="w-full border rounded-lg p-3"
-                  placeholder="Şifre"
-                  value={clientForm.password}
-                  onChange={(e) =>
-                    setClientForm({
-                      ...clientForm,
-                      password: e.target.value,
-                    })
-                  }
-                />
+              <form onSubmit={createClient} className="bg-white border rounded-2xl p-6 space-y-4">
+                <input className="w-full border rounded-lg p-3" placeholder="Firma Adı" value={clientForm.company_name} onChange={(e) => setClientForm({ ...clientForm, company_name: e.target.value })} />
+                <input className="w-full border rounded-lg p-3" placeholder="Yetkili" value={clientForm.authorized_person} onChange={(e) => setClientForm({ ...clientForm, authorized_person: e.target.value })} />
+                <input className="w-full border rounded-lg p-3" placeholder="Kullanıcı Adı" value={clientForm.username} onChange={(e) => setClientForm({ ...clientForm, username: e.target.value })} />
+                <input className="w-full border rounded-lg p-3" placeholder="Şifre" value={clientForm.password} onChange={(e) => setClientForm({ ...clientForm, password: e.target.value })} />
+                <input className="w-full border rounded-lg p-3" placeholder="E-posta" value={clientForm.email} onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })} />
+                <input className="w-full border rounded-lg p-3" placeholder="Telefon" value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })} />
 
                 <button className="w-full bg-[#003527] text-white rounded-lg p-3">
                   Müşteri Oluştur
@@ -420,15 +370,18 @@ export default function AdminDashboard() {
                       <th className="p-4">Firma</th>
                       <th className="p-4">Yetkili</th>
                       <th className="p-4">Kullanıcı</th>
+                      <th className="p-4">E-posta</th>
+                      <th className="p-4">Telefon</th>
                     </tr>
                   </thead>
-
                   <tbody>
                     {clients.map((client) => (
                       <tr key={client.id} className="border-t">
                         <td className="p-4">{client.company_name}</td>
                         <td className="p-4">{client.authorized_person}</td>
                         <td className="p-4">{client.username}</td>
+                        <td className="p-4">{client.email}</td>
+                        <td className="p-4">{client.phone}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -440,68 +393,22 @@ export default function AdminDashboard() {
 
         {activeTab === "tasks" && (
           <div>
-            <h2 className="text-3xl font-bold text-[#003527] mb-6">
-              Görev ve Sorular
-            </h2>
+            <h2 className="text-3xl font-bold text-[#003527] mb-6">Görev ve Sorular</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <form
-                onSubmit={createTask}
-                className="bg-white border rounded-2xl p-6 space-y-4"
-              >
-                <select
-                  className="w-full border rounded-lg p-3"
-                  value={taskForm.task_type}
-                  onChange={(e) =>
-                    setTaskForm({
-                      ...taskForm,
-                      task_type: e.target.value,
-                    })
-                  }
-                >
+              <form onSubmit={createTask} className="bg-white border rounded-2xl p-6 space-y-4">
+                <select className="w-full border rounded-lg p-3" value={taskForm.task_type} onChange={(e) => setTaskForm({ ...taskForm, task_type: e.target.value })}>
                   <option value="file">Dosya Görevi</option>
                   <option value="text">Açık Uçlu Soru</option>
                   <option value="choice">Şıklı Soru</option>
                 </select>
 
-                <input
-                  className="w-full border rounded-lg p-3"
-                  placeholder="Başlık"
-                  value={taskForm.title}
-                  onChange={(e) =>
-                    setTaskForm({
-                      ...taskForm,
-                      title: e.target.value,
-                    })
-                  }
-                />
+                <input className="w-full border rounded-lg p-3" placeholder="Başlık" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} />
 
-                <textarea
-                  className="w-full border rounded-lg p-3"
-                  rows="4"
-                  placeholder="Açıklama"
-                  value={taskForm.description}
-                  onChange={(e) =>
-                    setTaskForm({
-                      ...taskForm,
-                      description: e.target.value,
-                    })
-                  }
-                />
+                <textarea className="w-full border rounded-lg p-3" rows="4" placeholder="Açıklama" value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} />
 
                 {taskForm.task_type === "choice" && (
-                  <textarea
-                    className="w-full border rounded-lg p-3"
-                    rows="4"
-                    placeholder="Şıkları alt alta yazın"
-                    value={taskForm.options}
-                    onChange={(e) =>
-                      setTaskForm({
-                        ...taskForm,
-                        options: e.target.value,
-                      })
-                    }
-                  />
+                  <textarea className="w-full border rounded-lg p-3" rows="4" placeholder="Şıkları alt alta yazın" value={taskForm.options} onChange={(e) => setTaskForm({ ...taskForm, options: e.target.value })} />
                 )}
 
                 <button className="w-full bg-[#003527] text-white rounded-lg p-3">
@@ -512,43 +419,35 @@ export default function AdminDashboard() {
               <div className="lg:col-span-2 bg-white border rounded-2xl p-6">
                 <div className="space-y-3">
                   {tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="border rounded-xl p-4"
-                    >
+                    <div key={task.id} className="border rounded-xl p-4">
                       <div className="flex justify-between gap-4">
                         <div>
-                          <h4 className="font-bold text-[#003527]">
-                            {task.title}
-                          </h4>
-
-                          <p className="text-sm text-gray-500 mt-1">
-                            {task.description}
-                          </p>
+                          <h4 className="font-bold text-[#003527]">{task.title}</h4>
+                          <p className="text-sm text-gray-500 mt-1">{task.description}</p>
                         </div>
 
-                        <span className="px-3 py-1 rounded-full bg-[#6cf8bb] text-[#003527] text-xs font-semibold">
-                          {getTaskTypeLabel(task.task_type)}
-                        </span>
+                        <div className="flex gap-2 items-start">
+                          <span className="px-3 py-1 rounded-full bg-[#6cf8bb] text-[#003527] text-xs font-semibold">
+                            {getTaskTypeLabel(task.task_type)}
+                          </span>
+
+                          <button
+                            onClick={() => deleteTask(task.id)}
+                            className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold"
+                          >
+                            Sil
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 <div className="mt-8 border-t pt-6">
-                  <h3 className="font-bold text-[#003527] mb-4">
-                    Toplu Atama
-                  </h3>
+                  <h3 className="font-bold text-[#003527] mb-4">Toplu Atama</h3>
 
-                  <select
-                    className="w-full border rounded-lg p-3 mb-4"
-                    value={selectedTask}
-                    onChange={(e) =>
-                      setSelectedTask(e.target.value)
-                    }
-                  >
+                  <select className="w-full border rounded-lg p-3 mb-4" value={selectedTask} onChange={(e) => setSelectedTask(e.target.value)}>
                     <option value="">Görev seçin</option>
-
                     {tasks.map((task) => (
                       <option key={task.id} value={task.id}>
                         {task.title}
@@ -558,29 +457,14 @@ export default function AdminDashboard() {
 
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     {clients.map((client) => (
-                      <label
-                        key={client.id}
-                        className="border rounded-lg p-3 flex gap-2"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedClients.includes(
-                            client.id
-                          )}
-                          onChange={() =>
-                            toggleClientSelection(client.id)
-                          }
-                        />
-
+                      <label key={client.id} className="border rounded-lg p-3 flex gap-2">
+                        <input type="checkbox" checked={selectedClients.includes(client.id)} onChange={() => toggleClientSelection(client.id)} />
                         {client.company_name}
                       </label>
                     ))}
                   </div>
 
-                  <button
-                    onClick={assignTask}
-                    className="bg-[#006c49] text-white rounded-lg px-6 py-3"
-                  >
+                  <button onClick={assignTask} className="bg-[#006c49] text-white rounded-lg px-6 py-3">
                     Seçilen Müşterilere Ata
                   </button>
                 </div>
@@ -591,9 +475,7 @@ export default function AdminDashboard() {
 
         {activeTab === "assigned" && (
           <div>
-            <h2 className="text-3xl font-bold text-[#003527] mb-6">
-              Atananlar
-            </h2>
+            <h2 className="text-3xl font-bold text-[#003527] mb-6">Atananlar</h2>
 
             <div className="bg-white border rounded-2xl overflow-hidden">
               <table className="w-full text-left">
@@ -603,28 +485,29 @@ export default function AdminDashboard() {
                     <th className="p-4">Görev</th>
                     <th className="p-4">Tip</th>
                     <th className="p-4">Durum</th>
+                    <th className="p-4">İşlem</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {assignedTasks.map((item) => (
                     <tr key={item.id} className="border-t">
-                      <td className="p-4">
-                        {item.users?.company_name}
-                      </td>
-
-                      <td className="p-4">
-                        {item.tasks?.title}
-                      </td>
-
-                      <td className="p-4">
-                        {getTaskTypeLabel(
-                          item.tasks?.task_type
-                        )}
-                      </td>
-
-                      <td className="p-4">
-                        {item.status}
+                      <td className="p-4">{item.users?.company_name}</td>
+                      <td className="p-4">{item.tasks?.title}</td>
+                      <td className="p-4">{getTaskTypeLabel(item.tasks?.task_type)}</td>
+                      <td className="p-4">{item.status}</td>
+                      <td className="p-4 flex gap-2">
+                        <button
+                          onClick={() => reopenAssignedTask(item.id)}
+                          className="px-3 py-2 rounded-lg bg-yellow-100 text-yellow-700 text-sm"
+                        >
+                          Tekrar Aç
+                        </button>
+                        <button
+                          onClick={() => removeAssignedTask(item.id)}
+                          className="px-3 py-2 rounded-lg bg-red-100 text-red-700 text-sm"
+                        >
+                          Geri Çek
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -636,9 +519,7 @@ export default function AdminDashboard() {
 
         {activeTab === "answers" && (
           <div>
-            <h2 className="text-3xl font-bold text-[#003527] mb-6">
-              Cevaplar
-            </h2>
+            <h2 className="text-3xl font-bold text-[#003527] mb-6">Cevaplar</h2>
 
             <div className="bg-white border rounded-2xl overflow-hidden">
               <table className="w-full text-left">
@@ -649,25 +530,12 @@ export default function AdminDashboard() {
                     <th className="p-4">Cevap</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {answersList.map((item) => (
                     <tr key={item.id} className="border-t">
-                      <td className="p-4">
-                        {
-                          item.user_tasks?.users
-                            ?.company_name
-                        }
-                      </td>
-
-                      <td className="p-4">
-                        {item.user_tasks?.tasks?.title}
-                      </td>
-
-                      <td className="p-4">
-                        {item.answer_text ||
-                          item.selected_option}
-                      </td>
+                      <td className="p-4">{item.user_tasks?.users?.company_name}</td>
+                      <td className="p-4">{item.user_tasks?.tasks?.title}</td>
+                      <td className="p-4">{item.answer_text || item.selected_option}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -678,9 +546,7 @@ export default function AdminDashboard() {
 
         {activeTab === "uploads" && (
           <div>
-            <h2 className="text-3xl font-bold text-[#003527] mb-6">
-              Yüklenen Dosyalar
-            </h2>
+            <h2 className="text-3xl font-bold text-[#003527] mb-6">Yüklenen Dosyalar</h2>
 
             <div className="bg-white border rounded-2xl overflow-hidden">
               <table className="w-full text-left">
@@ -692,40 +558,17 @@ export default function AdminDashboard() {
                     <th className="p-4">İşlem</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {uploadsList.map((item) => (
                     <tr key={item.id} className="border-t">
-                      <td className="p-4">
-                        {
-                          item.user_tasks?.users
-                            ?.company_name
-                        }
-                      </td>
-
-                      <td className="p-4">
-                        {item.user_tasks?.tasks?.title}
-                      </td>
-
-                      <td className="p-4">
-                        {item.file_name}
-                      </td>
-
+                      <td className="p-4">{item.user_tasks?.users?.company_name}</td>
+                      <td className="p-4">{item.user_tasks?.tasks?.title}</td>
+                      <td className="p-4">{item.file_name}</td>
                       <td className="p-4 flex gap-2">
-                        <a
-                          href={item.file_url}
-                          target="_blank"
-                          className="px-3 py-2 rounded-lg bg-[#003527] text-white text-sm"
-                        >
+                        <a href={item.file_url} target="_blank" className="px-3 py-2 rounded-lg bg-[#003527] text-white text-sm">
                           İndir
                         </a>
-
-                        <button
-                          onClick={() =>
-                            deleteUpload(item.id)
-                          }
-                          className="px-3 py-2 rounded-lg bg-red-100 text-red-700 text-sm"
-                        >
+                        <button onClick={() => deleteUpload(item.id)} className="px-3 py-2 rounded-lg bg-red-100 text-red-700 text-sm">
                           Sil
                         </button>
                       </td>
